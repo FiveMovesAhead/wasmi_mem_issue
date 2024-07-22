@@ -1,0 +1,8 @@
+[workspace]
+members = ["wasm_blob", "app"]
+exclude = []
+resolver = "2"
+
+[profile.release]
+lto = true
+codegen-units = 1
