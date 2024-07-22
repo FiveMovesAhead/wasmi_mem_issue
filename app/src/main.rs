@@ -16,6 +16,7 @@ fn main() {
             .build();
         let engine = Engine::new(&config);
         let mut store = Store::new(&engine, limits);
+        store.limiter(|lim| lim);
         let linker = Linker::new(&engine);
         let module = Module::new(store.engine(), &wasm).expect("Failed to instantiate module");
         let instance = &linker
@@ -28,7 +29,7 @@ fn main() {
         let memory = instance
             .get_memory(&store, "memory")
             .expect("Failed to find memory");
-        memory.grow(&mut store, NUM_PAGES.into()).unwrap();
+        memory.grow(&mut store, (NUM_PAGES - 100).into()).unwrap();
         memory
             .write(&mut store, 0, &(serialized_text.len() as u32).to_le_bytes())
             .expect("Failed to write to memory");
