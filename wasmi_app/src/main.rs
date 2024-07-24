@@ -1,7 +1,6 @@
 use wasmi::{Config, Engine, Linker, Module, Store, StoreLimitsBuilder};
 
 const MAX_MEMORY: usize = 1 * 1024 * 1024 * 1024; // 1GB
-const NUM_PAGES: u16 = (MAX_MEMORY / (64 * 1024)) as u16;
 
 fn main() {
     println!("Loading ./wasm_blob.wasm");
@@ -18,27 +17,33 @@ fn main() {
         let mut store = Store::new(&engine, limits);
         store.limiter(|lim| lim);
         let linker = Linker::new(&engine);
-        let module = Module::new(store.engine(), &*wasm).expect("Failed to instantiate module");
+        let module =
+            Module::new(store.engine(), &*wasm).expect("Wasmi: failed to instantiate module");
         let instance = &linker
             .instantiate(&mut store, &module)
-            .expect("Failed to instantiate linker")
+            .expect("Wasmi: failed to instantiate linker")
             .start(&mut store)
-            .expect("Failed to start module");
+            .expect("Wasmi: failed to start module");
         let serialized_text =
-            bincode::serialize(&"A".repeat(n * 1024)).expect("Failed to serialize");
+            bincode::serialize(&"A".repeat(n * 1024)).expect("Wasmi: failed to serialize");
         let memory = instance
             .get_memory(&store, "memory")
-            .expect("Failed to find memory");
-        memory.grow(&mut store, (NUM_PAGES - 100).into()).unwrap();
+            .expect("Wasmi: failed to find `memory`");
+        let init = instance
+            .get_typed_func::<u32, u32>(&store, "init")
+            .expect("Wasmi: failed to find `init` function");
+        let deinit = instance
+            .get_typed_func::<(u32, u32), ()>(&store, "deinit")
+            .expect("Wasmi: failed to find `deinit` function");
+        let deserialize = instance
+            .get_typed_func::<(u32, u32), ()>(&store, "deserialize")
+            .expect("Wasmi: failed to find `deserialize` function");
+        let data_len: u32 = serialized_text.len() as u32;
+        let data_ptr: u32 = init.call(&mut store, data_len).unwrap();
         memory
-            .write(&mut store, 0, &serialized_text)
-            .expect("Failed to write to memory");
-        let func = instance
-            .get_func(&store, "entry_point")
-            .expect("Failed to find entry_point");
-        func.typed::<(u32, u32), ()>(&store)
-            .expect("Failed to instantiate function")
-            .call(&mut store, (0, serialized_text.len() as u32))
-            .expect("SHOULD WORK");
+            .write(&mut store, data_ptr as usize, &serialized_text)
+            .expect("Wasmi: failed to write serialized text to `memory`");
+        deserialize.call(&mut store, (data_ptr, data_len)).unwrap();
+        deinit.call(&mut store, (data_ptr, data_len)).unwrap();
     }
 }
