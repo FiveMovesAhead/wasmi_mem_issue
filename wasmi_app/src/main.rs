@@ -31,17 +31,14 @@ fn main() {
             .expect("Failed to find memory");
         memory.grow(&mut store, (NUM_PAGES - 100).into()).unwrap();
         memory
-            .write(&mut store, 0, &(serialized_text.len() as u32).to_le_bytes())
-            .expect("Failed to write to memory");
-        memory
-            .write(&mut store, 4, &serialized_text)
+            .write(&mut store, 0, &serialized_text)
             .expect("Failed to write to memory");
         let func = instance
             .get_func(&store, "entry_point")
             .expect("Failed to find entry_point");
-        func.typed::<u32, ()>(&store)
+        func.typed::<(u32, u32), ()>(&store)
             .expect("Failed to instantiate function")
-            .call(&mut store, 0)
+            .call(&mut store, (0, serialized_text.len() as u32))
             .expect("SHOULD WORK");
     }
 }

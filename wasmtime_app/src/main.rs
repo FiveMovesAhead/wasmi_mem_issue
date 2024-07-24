@@ -13,24 +13,19 @@ fn main() {
             .get_memory(&mut store, "memory")
             .expect("Failed to find memory");
         let entry_point = instance
-            .get_typed_func::<i32, ()>(&mut store, "entry_point")
+            .get_typed_func::<(u32, u32), ()>(&mut store, "entry_point")
             .expect("Failed to find entry_point");
 
         let serialized_text =
             bincode::serialize(&"A".repeat(n * 1024)).expect("Failed to serialize");
         {
             let data_mut = memory.data_mut(&mut store);
-            for (i, b) in (serialized_text.len() as u32)
-                .to_le_bytes()
-                .into_iter()
-                .enumerate()
-            {
-                data_mut[i] = b;
-            }
-            for (i, b) in serialized_text.into_iter().enumerate() {
-                data_mut[i + 4] = b;
+            for (i, b) in serialized_text.iter().enumerate() {
+                data_mut[i] = *b;
             }
         }
-        entry_point.call(&mut store, 0).expect("SHOULD WORK");
+        entry_point
+            .call(&mut store, (0, serialized_text.len() as u32))
+            .expect("SHOULD WORK");
     }
 }
