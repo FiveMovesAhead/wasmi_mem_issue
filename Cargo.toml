@@ -1,5 +1,5 @@
 [workspace]
-members = ["wasm_blob", "app"]
+members = ["wasm_blob", "wasmi_app", "wasmtime_app"]
 exclude = []
 resolver = "2"
 

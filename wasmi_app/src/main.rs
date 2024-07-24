@@ -6,7 +6,7 @@ const NUM_PAGES: u16 = (MAX_MEMORY / (64 * 1024)) as u16;
 fn main() {
     println!("Loading ./wasm_blob.wasm");
     let wasm = std::fs::read("./wasm_blob.wasm").expect("Failed to read wasm file");
-    for n in 1000..2000 {
+    for n in 1030..2000 {
         println!("Testing with {}kb of data", n);
         let config = Config::default();
         let limits = StoreLimitsBuilder::new()
@@ -18,7 +18,7 @@ fn main() {
         let mut store = Store::new(&engine, limits);
         store.limiter(|lim| lim);
         let linker = Linker::new(&engine);
-        let module = Module::new(store.engine(), &wasm).expect("Failed to instantiate module");
+        let module = Module::new(store.engine(), &*wasm).expect("Failed to instantiate module");
         let instance = &linker
             .instantiate(&mut store, &module)
             .expect("Failed to instantiate linker")
@@ -39,12 +39,9 @@ fn main() {
         let func = instance
             .get_func(&store, "entry_point")
             .expect("Failed to find entry_point");
-        if let Err(e) = func
-            .typed::<i32, ()>(&store)
+        func.typed::<u32, ()>(&store)
             .expect("Failed to instantiate function")
             .call(&mut store, 0)
-        {
-            panic!("Error occured during execution: {}", e);
-        }
+            .expect("SHOULD WORK");
     }
 }
